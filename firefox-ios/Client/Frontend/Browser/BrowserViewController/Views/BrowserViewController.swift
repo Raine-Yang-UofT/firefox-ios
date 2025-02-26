@@ -15,12 +15,15 @@ import Common
 import ComponentLibrary
 import Redux
 import ToolbarKit
+import WidgetKit
 
 import class MozillaAppServices.BookmarkFolderData
 import class MozillaAppServices.BookmarkItemData
 import struct MozillaAppServices.Login
 import enum MozillaAppServices.BookmarkRoots
 import enum MozillaAppServices.VisitType
+import ActivityKit
+
 
 class BrowserViewController: UIViewController,
                              SearchBarLocationProvider,
@@ -106,7 +109,12 @@ class BrowserViewController: UIViewController,
     var keyboardBackdrop: UIView?
     var pendingToast: Toast? // A toast that might be waiting for BVC to appear before displaying
     var downloadToast: DownloadToast? // A toast that is showing the combined download progress
-
+    private var _downloadLiveActivity: Any? = nil
+    @available(iOS 16.2, *)
+    var downloadLiveActivity: Activity<DownloadLiveActivityAttributes>? {
+        return _downloadLiveActivity as? Activity<DownloadLiveActivityAttributes>
+    }
+    
     // popover rotation handling
     var displayedPopoverController: UIViewController?
     var updateDisplayedPopoverProperties: (() -> Void)?
@@ -4138,6 +4146,22 @@ extension BrowserViewController: TabManagerDelegate {
                 toast.bottomAnchor.constraint(equalTo: self.bottomContentStackView.bottomAnchor)
             ]
         }
+    }
+    
+    func show(downloadState: DownloadLiveActivityAttributes.ContentState){
+        guard #available(iOS 16.2, *) else { return }
+        let attributes = DownloadLiveActivityAttributes()
+
+        do {
+            _downloadLiveActivity = try Activity<DownloadLiveActivityAttributes>.request(
+                attributes: attributes,
+                content: .init(state: downloadState, staleDate: nil),
+                pushType: nil
+            )
+        } catch {
+            print("Failed to start Live Activity: \(error.localizedDescription)")
+        }
+        
     }
 
     func tabManagerDidRemoveAllTabs(_ tabManager: TabManager, toast: ButtonToast?) {
