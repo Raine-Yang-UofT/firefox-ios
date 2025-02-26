@@ -6,7 +6,7 @@ import WidgetKit
 
 typealias DownloadState = DownloadLiveActivityAttributes.ContentState.DownloadState
 struct DownloadLiveActivityUtil {
-    static func generateDownloadStateFromDownload(download: Download) -> DownloadState{
+    static func generateDownloadStateFromDownload(download: Download) -> DownloadState {
         let downloadState = DownloadState(
             fileName: download.filename,
             hasContentEncoding: download.hasContentEncoding,
@@ -15,10 +15,9 @@ struct DownloadLiveActivityUtil {
             isComplete: download.isComplete)
         return downloadState
     }
-    
+
     static func buildContentState(downloads: [Download]) -> [DownloadState] {
-        let downloadsStates = downloads.map({download in generateDownloadStateFromDownload(download: download)})
+        let downloadsStates = downloads.map({ download in generateDownloadStateFromDownload(download: download) })
         return downloadsStates
     }
-    
 }

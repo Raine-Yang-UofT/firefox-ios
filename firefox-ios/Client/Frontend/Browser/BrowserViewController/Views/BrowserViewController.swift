@@ -24,7 +24,6 @@ import enum MozillaAppServices.BookmarkRoots
 import enum MozillaAppServices.VisitType
 import ActivityKit
 
-
 class BrowserViewController: UIViewController,
                              SearchBarLocationProvider,
                              Themeable,
@@ -109,12 +108,12 @@ class BrowserViewController: UIViewController,
     var keyboardBackdrop: UIView?
     var pendingToast: Toast? // A toast that might be waiting for BVC to appear before displaying
     var downloadToast: DownloadToast? // A toast that is showing the combined download progress
-    private var _downloadLiveActivity: Any? = nil
+    private var _downloadLiveActivity: Any?
     @available(iOS 16.2, *)
     var downloadLiveActivity: Activity<DownloadLiveActivityAttributes>? {
         return _downloadLiveActivity as? Activity<DownloadLiveActivityAttributes>
     }
-    
+
     // popover rotation handling
     var displayedPopoverController: UIViewController?
     var updateDisplayedPopoverProperties: (() -> Void)?
@@ -4147,8 +4146,8 @@ extension BrowserViewController: TabManagerDelegate {
             ]
         }
     }
-    
-    func show(downloadState: DownloadLiveActivityAttributes.ContentState){
+
+    func show(downloadState: DownloadLiveActivityAttributes.ContentState) {
         guard #available(iOS 16.2, *) else { return }
         let attributes = DownloadLiveActivityAttributes()
 
@@ -4161,7 +4160,6 @@ extension BrowserViewController: TabManagerDelegate {
         } catch {
             print("Failed to start Live Activity: \(error.localizedDescription)")
         }
-        
     }
 
     func tabManagerDidRemoveAllTabs(_ tabManager: TabManager, toast: ButtonToast?) {

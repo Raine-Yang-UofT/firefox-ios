@@ -47,7 +47,6 @@ struct DownloadLiveActivityAttributes: ActivityAttributes {
             var totalBytesExpected: Int64 = 0
             var totalBytesDownloaded: Int64 = 0
 
-
             for download in downloadsStates {
                 // downloads with content encoding cannot
                 // be estimated accurately and should be

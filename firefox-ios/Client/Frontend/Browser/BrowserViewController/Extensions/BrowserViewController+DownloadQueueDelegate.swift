@@ -30,7 +30,7 @@ extension BrowserViewController: DownloadQueueDelegate {
                                                     theme: self.currentTheme())
                 }
             })
-            
+
             let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: [download])
             let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
             show(downloadState: contentState)
@@ -40,13 +40,11 @@ extension BrowserViewController: DownloadQueueDelegate {
 
         // Otherwise, just add this download to the existing download toast.
         downloadToast.addDownload(download)
-        
-        
+
         if #available(iOS 16.2, *) {
             let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: downloadToast.downloads)
                 let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
-                Task {await downloadLiveActivity?.update(using: contentState)}
-                
+                Task { await downloadLiveActivity?.update(using: contentState) }
         }
     }
 
@@ -56,11 +54,10 @@ extension BrowserViewController: DownloadQueueDelegate {
         combinedTotalBytesExpected: Int64?
     ) {
         downloadToast?.combinedBytesDownloaded = combinedBytesDownloaded
-        if #available(iOS 16.2, *), let dt = downloadToast{
+        if #available(iOS 16.2, *), let dt = downloadToast {
             let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: dt.downloads)
             let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
-            Task {await downloadLiveActivity?.update(using: contentState)}
-                
+            Task { await downloadLiveActivity?.update(using: contentState) }
         }
     }
 
@@ -73,14 +70,13 @@ extension BrowserViewController: DownloadQueueDelegate {
         else { return }
 
         DispatchQueue.main.async {
-            
             if #available(iOS 16.2, *), let downloadLiveActivity = self.downloadLiveActivity {
                 let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: downloadToast.downloads)
                 let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
-                Task {await downloadLiveActivity.end(using: contentState, dismissalPolicy: .after(.now.addingTimeInterval(2)))}
+                Task { await downloadLiveActivity.end(using: contentState,
+                                                      dismissalPolicy: .after(.now.addingTimeInterval(2))) }
             }
             downloadToast.dismiss(false)
-            
 
             // We only care about download errors specific to our window's downloads
             if error == nil {
