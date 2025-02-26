@@ -74,7 +74,8 @@ extension BrowserViewController: DownloadQueueDelegate {
                 let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: downloadToast.downloads)
                 let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
                 Task { await downloadLiveActivity.end(using: contentState,
-                                                      dismissalPolicy: .after(.now.addingTimeInterval(2))) }
+                                                      dismissalPolicy: .after(.now.addingTimeInterval(2)))
+                }
             }
             downloadToast.dismiss(false)
 
