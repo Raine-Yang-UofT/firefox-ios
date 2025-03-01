@@ -123,6 +123,7 @@
 		0EC57D082CA6FCA5002E3F04 /* PasswordGeneratorHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC57D072CA6FCA5002E3F04 /* PasswordGeneratorHeaderView.swift */; };
 		0EC57D0A2CA6FCC5002E3F04 /* PasswordGeneratorPasswordFieldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC57D092CA6FCC5002E3F04 /* PasswordGeneratorPasswordFieldView.swift */; };
 		0ECB6B6D2CCFF718006A7C82 /* DateGroupedTableDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ECB6B672CCFE663006A7C82 /* DateGroupedTableDataTests.swift */; };
+		0EEDB6E22D6900B200F3C774 /* DownloadLiveActivityUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEDB6E12D69009800F3C774 /* DownloadLiveActivityUtil.swift */; };
 		158241282820698B00956B39 /* RustRemoteTabsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 158241272820698B00956B39 /* RustRemoteTabsTests.swift */; };
 		15DE98FD27FCED4F00F1ECDB /* RustRemoteTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DE98FC27FCED4F00F1ECDB /* RustRemoteTabs.swift */; };
 		1BE7A4902C636AC800460798 /* URLSession+sharedMPTCP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE7A48F2C636AC800460798 /* URLSession+sharedMPTCP.swift */; };
@@ -2515,6 +2516,7 @@
 		0EC57D072CA6FCA5002E3F04 /* PasswordGeneratorHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordGeneratorHeaderView.swift; sourceTree = "<group>"; };
 		0EC57D092CA6FCC5002E3F04 /* PasswordGeneratorPasswordFieldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordGeneratorPasswordFieldView.swift; sourceTree = "<group>"; };
 		0ECB6B672CCFE663006A7C82 /* DateGroupedTableDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateGroupedTableDataTests.swift; sourceTree = "<group>"; };
+		0EEDB6E12D69009800F3C774 /* DownloadLiveActivityUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadLiveActivityUtil.swift; sourceTree = "<group>"; };
 		0EEE4B2AA4EEEF77B6F992F7 /* ml */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ml; path = ml.lproj/FindInPage.strings; sourceTree = "<group>"; };
 		0F894AD0807E49799E2534E6 /* nn */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nn; path = nn.lproj/Today.strings; sourceTree = "<group>"; };
 		0FB44A1B9437AF9EABCD398E /* el */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/3DTouchActions.strings; sourceTree = "<group>"; };
@@ -14515,6 +14517,7 @@
 		E65075551E37F714006961AC /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				0EEDB6E12D69009800F3C774 /* DownloadLiveActivityUtil.swift */,
 				5AD3B67D2CF665AE00AFA1FE /* UIApplicationInterface.swift */,
 				5AD3B67B2CF65DE300AFA1FE /* LocaleInterface.swift */,
 				8A13FA8C2AD834FA007527AB /* BackgroundTabLoader.swift */,
@@ -16846,6 +16849,7 @@
 				396E38F11EE0C8EC00CC180F /* FxAPushMessageHandler.swift in Sources */,
 				8A76B01629F6EB3900A82607 /* ScreenshotService.swift in Sources */,
 				8C1953322B85EAB500761B20 /* AutofillHeaderView.swift in Sources */,
+				0EEDB6E22D6900B200F3C774 /* DownloadLiveActivityUtil.swift in Sources */,
 				8A7AE4442BAB510B0072DAEC /* LibraryPanelCoordinatorDelegate.swift in Sources */,
 				8C19532E2B85E7AE00761B20 /* SelfSizingHostingController.swift in Sources */,
 				E4CD9F6D1A77DD2800318571 /* ReaderModeStyleViewController.swift in Sources */,

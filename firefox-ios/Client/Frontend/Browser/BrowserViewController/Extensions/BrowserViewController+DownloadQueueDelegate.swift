@@ -30,12 +30,21 @@ extension BrowserViewController: DownloadQueueDelegate {
                 }
             })
 
+            let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: [download])
+            let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
+            show(downloadState: contentState)
             show(toast: downloadToast, duration: nil)
             return
         }
 
         // Otherwise, just add this download to the existing download toast.
         downloadToast.addDownload(download)
+
+        if #available(iOS 16.2, *) {
+            let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: downloadToast.downloads)
+                let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
+                Task { await downloadLiveActivity?.update(using: contentState) }
+        }
     }
 
     func downloadQueue(
@@ -44,6 +53,11 @@ extension BrowserViewController: DownloadQueueDelegate {
         combinedTotalBytesExpected: Int64?
     ) {
         downloadToast?.combinedBytesDownloaded = combinedBytesDownloaded
+        if #available(iOS 16.2, *), let dt = downloadToast {
+            let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: dt.downloads)
+            let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
+            Task { await downloadLiveActivity?.update(using: contentState) }
+        }
     }
 
     func downloadQueue(_ downloadQueue: DownloadQueue, download: Download, didFinishDownloadingTo location: URL) {}
@@ -55,6 +69,13 @@ extension BrowserViewController: DownloadQueueDelegate {
         else { return }
 
         DispatchQueue.main.async {
+            if #available(iOS 16.2, *), let downloadLiveActivity = self.downloadLiveActivity {
+                let downloadsStates = DownloadLiveActivityUtil.buildContentState(downloads: downloadToast.downloads)
+                let contentState = DownloadLiveActivityAttributes.ContentState(downloadsStates: downloadsStates)
+                Task { await downloadLiveActivity.end(using: contentState,
+                                                      dismissalPolicy: .after(.now.addingTimeInterval(2)))
+                }
+            }
             downloadToast.dismiss(false)
 
             // We only care about download errors specific to our window's downloads
