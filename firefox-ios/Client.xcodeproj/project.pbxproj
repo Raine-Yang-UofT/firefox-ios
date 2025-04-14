@@ -5869,6 +5869,7 @@
 		43A187342D75C5AB00F16717 /* sq */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = sq; path = sq.lproj/AppIconSelection.strings; sourceTree = "<group>"; };
 		43A1F6A62BB19295008E5581 /* co */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = co; path = co.lproj/BottomSheet.strings; sourceTree = "<group>"; };
 		43A2001C2BE8F5F800BBF27C /* zh-CN */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-CN"; path = "zh-CN.lproj/Microsurvey.strings"; sourceTree = "<group>"; };
+		43A253D52DAD26490095A695 /* ny */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ny; path = ny.lproj/WidgetIntents.strings; sourceTree = "<group>"; };
 		43A27A372A3734FC00DE9AE0 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Footer.strings; sourceTree = "<group>"; };
 		43A27A382A3734FD00DE9AE0 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/RememberCard.strings; sourceTree = "<group>"; };
 		43A27A392A3734FD00DE9AE0 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/UpdateCard.strings; sourceTree = "<group>"; };
@@ -7600,8 +7601,8 @@
 		5A70EF20295E3E0B00790249 /* UnitTestSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitTestSceneDelegate.swift; sourceTree = "<group>"; };
 		5A8017DF29CE15D90047120D /* TabManagerImplementation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerImplementation.swift; sourceTree = "<group>"; };
 		5A81C5DC2A4C981A00BE88C2 /* PasswordManagerCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordManagerCoordinatorTests.swift; sourceTree = "<group>"; };
-		5A96FB5D2D9447E600917B12 /* FirefoxStaging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = FirefoxStaging.xcconfig; path = Configuration/FirefoxStaging.xcconfig; sourceTree = "<group>"; };
 		5A96FB592D94356C00917B12 /* ScreenshotSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotSetting.swift; sourceTree = "<group>"; };
+		5A96FB5D2D9447E600917B12 /* FirefoxStaging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = FirefoxStaging.xcconfig; path = Configuration/FirefoxStaging.xcconfig; sourceTree = "<group>"; };
 		5A9A09D128AFD51900B6F51E /* MockHomepageDataModelDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHomepageDataModelDelegate.swift; sourceTree = "<group>"; };
 		5A9A09D328B01D8700B6F51E /* MockTelemetryWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTelemetryWrapper.swift; sourceTree = "<group>"; };
 		5A9A09D528B01FD500B6F51E /* MockURLBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockURLBarView.swift; sourceTree = "<group>"; };
@@ -16207,6 +16208,7 @@
 				tg,
 				"es-ES",
 				tzm,
+				ny,
 			);
 			mainGroup = F84B21B51A090F8100AAB793;
 			packageReferences = (
@@ -25436,6 +25438,7 @@
 				43E58E852D6C8B9300B07153 /* tg */,
 				435B20F02D75C47A00D1CC3A /* es-ES */,
 				433D74F72D75C5FE003D5A32 /* tzm */,
+				43A253D52DAD26490095A695 /* ny */,
 			);
 			name = WidgetIntents.intentdefinition;
 			sourceTree = "<group>";
