@@ -101,6 +101,7 @@ const FORM_SUBMISSION_REASON = {
   PAGE_NAVIGATION: "page-navigation",
 };
 
+const ELIGIBLE_ELEMENT_TYPES = ["input", "select", "textarea"];
 const ELIGIBLE_INPUT_TYPES = [
   "text",
   "email",
@@ -129,6 +130,8 @@ FormAutofillUtils = {
   MAX_FIELD_VALUE_LENGTH,
   FIELD_STATES,
   FORM_SUBMISSION_REASON,
+  ELIGIBLE_ELEMENT_TYPES,
+  ELIGIBLE_INPUT_TYPES,
 
   _fieldNameInfo: {
     name: "name",
@@ -142,6 +145,7 @@ FormAutofillUtils = {
     "address-line3": "address",
     "address-level1": "address",
     "address-level2": "address",
+    "address-level3": "address",
     // DE addresses are often split into street name and house number;
     // combined they form address-line1
     "address-streetname": "address",
@@ -185,6 +189,20 @@ FormAutofillUtils = {
 
   isCCNumber(ccNumber) {
     return ccNumber && lazy.CreditCard.isValidNumber(ccNumber);
+  },
+
+  isTextControl(element) {
+    return (
+      HTMLInputElement.isInstance(element) ||
+      HTMLTextAreaElement.isInstance(element)
+    );
+  },
+
+  queryEligibleElements(element, includeIframe = false) {
+    const types = includeIframe
+      ? [...ELIGIBLE_ELEMENT_TYPES, "iframe"]
+      : ELIGIBLE_ELEMENT_TYPES;
+    return Array.from(element.querySelectorAll(types.join(",")));
   },
 
   /**
@@ -438,7 +456,9 @@ FormAutofillUtils = {
    * @returns {boolean} true if the element can be autofilled
    */
   isFieldAutofillable(element) {
-    return element && !element.readOnly && !element.disabled;
+    return (
+      element && !element.readOnly && !element.disabled && element.isConnected
+    );
   },
 
   /**
@@ -485,6 +505,10 @@ FormAutofillUtils = {
     if (HTMLInputElement.isInstance(element)) {
       // `element.type` can be recognized as `text`, if it's missing or invalid.
       return ELIGIBLE_INPUT_TYPES.includes(element.type);
+    }
+
+    if (HTMLTextAreaElement.isInstance(element)) {
+      return true;
     }
 
     return HTMLSelectElement.isInstance(element);
@@ -1417,18 +1441,6 @@ FormAutofillUtils = {
     );
   },
 };
-
-ChromeUtils.defineLazyGetter(FormAutofillUtils, "stringBundle", function () {
-  return Services.strings.createBundle(
-    "chrome://formautofill/locale/formautofill.properties"
-  );
-});
-
-ChromeUtils.defineLazyGetter(FormAutofillUtils, "brandBundle", function () {
-  return Services.strings.createBundle(
-    "chrome://branding/locale/brand.properties"
-  );
-});
 
 XPCOMUtils.defineLazyPreferenceGetter(
   FormAutofillUtils,
