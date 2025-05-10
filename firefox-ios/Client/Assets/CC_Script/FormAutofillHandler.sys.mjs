@@ -17,6 +17,8 @@ ChromeUtils.defineESModuleGetters(lazy, {
   FormAutofillNameUtils:
     "resource://gre/modules/shared/FormAutofillNameUtils.sys.mjs",
   LabelUtils: "resource://gre/modules/shared/LabelUtils.sys.mjs",
+  clearTimeout: "resource://gre/modules/Timer.sys.mjs",
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
 
 const { FIELD_STATES } = FormAutofillUtils;
@@ -24,6 +26,7 @@ const { FIELD_STATES } = FormAutofillUtils;
 export const FORM_CHANGE_REASON = {
   NODES_ADDED: "nodes-added",
   NODES_REMOVED: "nodes-removed",
+  SELECT_OPTIONS_CHANGED: "select-options-changed",
   ELEMENT_INVISIBLE: "visible-element-became-invisible",
   ELEMENT_VISIBLE: "invisible-element-became-visible",
 };
@@ -60,10 +63,12 @@ export class FormAutofillHandler {
   #fieldDetails = null;
 
   /**
-   * Flags if the MutationObserver that is observing node
-   * additions/removals in the root element has been set up
+   * Flags if the MutationObserver (this.#formMutationObserver) that is observing
+   * node additions/removals for the root element has been set up
    */
-  #isObservingFormChanges = false;
+  #isObservingFormMutations = false;
+
+  #formMutationObserver = null;
 
   #visibilityStateObserverByElement = new WeakMap();
 
@@ -71,7 +76,7 @@ export class FormAutofillHandler {
    *
    * fillOnFormChangeData.isWithinDynamicFormChangeThreshold:
    *              Flags if a "form-change" event is received within the timeout threshold
-   *              (see lazy.FormAutofill.fillOnDynamicFormChangeTimeout), that we set
+   *              (see FormAutofill.fillOnDynamicFormChangeTimeout), that we set
    *              in order to consider newly detected fields for filling.
    * fillOnFormChangeData.previouslyUsedProfile
    *              The previously used profile from the latest autocompletion.
@@ -79,9 +84,15 @@ export class FormAutofillHandler {
    *              The previously focused element id from the latest autocompletion
    *
    * This is used for any following form changes and is cleared after a time threshold
-   * set by lazy.FormAutofill.fillOnDynamicFormChangeTimeout.
+   * set by FormAutofill.fillOnDynamicFormChangeTimeout.
    */
   #fillOnFormChangeData = new Map();
+
+  /**
+   * Caching the refill timeout id to cancel it once we know that we're about to fill
+   * on form change, because this sets up another refill timeout.
+   */
+  #refillTimeoutId = null;
 
   /**
    * Flag to indicate whethere there is an ongoing autofilling/clearing process.
@@ -219,7 +230,9 @@ export class FormAutofillHandler {
   }
 
   clearVisibilityStateObserverByElement(element) {
-    if (this.#visibilityStateObserverByElement.has(element)) {
+    if (this.isVisiblityStateObserverSetUpByElement(element)) {
+      const observer = this.#visibilityStateObserverByElement.get(element);
+      observer.disconnect();
       this.#visibilityStateObserverByElement.delete(element);
     }
   }
@@ -262,6 +275,11 @@ export class FormAutofillHandler {
     }
 
     return false;
+  }
+
+  updateFormByElement(element) {
+    const formLike = lazy.AutofillFormFactory.createFromField(element);
+    this._updateForm(formLike);
   }
 
   /**
@@ -340,7 +358,7 @@ export class FormAutofillHandler {
   }
 
   /**
-   * Resetting the state element's fieldDetail after it was removed from the form
+   * Resetting the filled state after an element was removed from the form
    * Todo: We'll need to update this.filledResult in FormAutofillParent (Bug 1948077).
    *
    * @param {HTMLElement} element that was removed
@@ -349,8 +367,7 @@ export class FormAutofillHandler {
     if (this.getFilledStateByElement(element) != FIELD_STATES.AUTO_FILLED) {
       return;
     }
-    const fieldDetail = this.getFieldDetailByElement(element);
-    this.#filledStateByElement.delete(fieldDetail);
+    this.#filledStateByElement.delete(element);
   }
 
   /**
@@ -414,7 +431,7 @@ export class FormAutofillHandler {
         continue;
       }
 
-      if (HTMLInputElement.isInstance(element)) {
+      if (FormAutofillUtils.isTextControl(element)) {
         if (element.value && element.value != element.defaultValue) {
           // Skip the field if the user has already entered text and that text
           // is not the site prefilled value.
@@ -446,9 +463,12 @@ export class FormAutofillHandler {
    *        The data profile containing the values to be autofilled into the form fields.
    */
   fillFields(focusedId, elementIds, profile) {
+    this.cancelRefillOnSiteClearingFieldsAction();
+
     this.#isAutofillInProgress = true;
     this.getAdaptedProfiles([profile]);
 
+    const filledValuesByElement = new Map();
     for (const fieldDetail of this.fieldDetails) {
       const { element, elementId } = fieldDetail;
 
@@ -461,7 +481,7 @@ export class FormAutofillHandler {
 
       element.previewValue = "";
 
-      if (HTMLInputElement.isInstance(element)) {
+      if (FormAutofillUtils.isTextControl(element)) {
         // Bug 1687679: Since profile appears to be presentation ready data, we need to utilize the "x-formatted" field
         // that is generated when presentation ready data doesn't fit into the autofilling element.
         // For example, autofilling expiration month into an input element will not work as expected if
@@ -485,10 +505,19 @@ export class FormAutofillHandler {
         ) {
           FormAutofillHandler.fillFieldValue(element, value);
           this.changeFieldState(fieldDetail, FIELD_STATES.AUTO_FILLED);
+          filledValuesByElement.set(element, value);
         }
       } else if (HTMLSelectElement.isInstance(element)) {
         const option = this.matchSelectOptions(fieldDetail, profile);
         if (!option) {
+          if (
+            this.getFilledStateByElement(element) == FIELD_STATES.AUTO_FILLED
+          ) {
+            // The select element was previously autofilled, but there
+            // is no matching option under the current set of options anymore.
+            // Changing the state will also remove the highlighting from the element
+            this.changeFieldState(fieldDetail, FIELD_STATES.NORMAL);
+          }
           continue;
         }
 
@@ -500,6 +529,7 @@ export class FormAutofillHandler {
         }
         // Autofill highlight appears regardless if value is changed or not
         this.changeFieldState(fieldDetail, FIELD_STATES.AUTO_FILLED);
+        filledValuesByElement.set(element, option.value);
       } else {
         continue;
       }
@@ -509,6 +539,8 @@ export class FormAutofillHandler {
     this.#isAutofillInProgress = false;
 
     this.registerFormChangeHandler();
+
+    this.ensureValuesRefilledIfCleared(filledValuesByElement);
   }
 
   registerFormChangeHandler() {
@@ -523,6 +555,7 @@ export class FormAutofillHandler {
         return;
       }
       if (e.type == "reset") {
+        this.cancelRefillOnSiteClearingFieldsAction();
         for (const fieldDetail of this.fieldDetails) {
           const element = fieldDetail.element;
           element.removeEventListener("input", this, { mozSystemGroup: true });
@@ -564,6 +597,53 @@ export class FormAutofillHandler {
   }
 
   /**
+   * Re-fills any previously autofilled element if the website cleared the element
+   * immediately after it has been autofilled (not if cleared by the user).
+   * This is to avoid having elements that are empty but highlighted.
+   *
+   * @param {Map<HTMLElement,string>} filledValuesByElement
+   */
+  ensureValuesRefilledIfCleared(filledValuesByElement) {
+    if (!FormAutofill.refillOnSiteClearingFields) {
+      return;
+    }
+
+    const filledElementValues = this.fieldDetails
+      .filter(fd => fd.element.autofillState == FIELD_STATES.AUTO_FILLED)
+      // Using the cached filled value here instead of fd.element.value, because
+      // fd.element.value is not always the property that the site stores the value at.
+      .map(fd => [fd.element, filledValuesByElement.get(fd.element) ?? ""]);
+
+    this.#refillTimeoutId = lazy.setTimeout(() => {
+      for (let [e, v] of filledElementValues) {
+        if (e.autofillState == FIELD_STATES.AUTO_FILLED && e.value === v) {
+          // Nothing to do if the autofilled value wasn't cleared or the
+          // element's autofill state has changed to NORMAL in the meantime
+          continue;
+        }
+
+        this.#isAutofillInProgress = true;
+        FormAutofillHandler.fillFieldValue(e, v, { ignoreFocus: true });
+        // Although the field should already be in the autofilled state at this point,
+        // still setting autofilled state to re-highlight the element.
+        e.autofillState = FIELD_STATES.AUTO_FILLED;
+        this.#isAutofillInProgress = false;
+        this.#refillTimeoutId = null;
+      }
+    }, FormAutofill.refillOnSiteClearingFieldsTimeout);
+  }
+
+  cancelRefillOnSiteClearingFieldsAction() {
+    if (!FormAutofill.refillOnSiteClearingFields) {
+      return;
+    }
+    if (this.#refillTimeoutId) {
+      lazy.clearTimeout(this.#refillTimeoutId);
+      this.#refillTimeoutId = null;
+    }
+  }
+
+  /**
    * Listens for dynamic form changes by setting up two observer types:
    *      1. IntersectionObserver(s) that observe(s) intersections between
    *         (in-)visibile elements and an intersection target (the form/document of interest).
@@ -579,11 +659,7 @@ export class FormAutofillHandler {
     }
 
     this.setUpElementVisibilityObserver();
-
-    if (!this.#isObservingFormChanges) {
-      this.setUpNodesObserver();
-      this.#isObservingFormChanges = true;
-    }
+    this.setUpFormNodesMutationObserver();
   }
 
   /**
@@ -661,6 +737,14 @@ export class FormAutofillHandler {
         continue;
       }
       if (FormAutofillUtils.isFieldVisible(element)) {
+        // We don't care about visibility state changes for fields that are not recognized
+        // by our heuristics. We only handle this for visible fields because we currently
+        // don't run field detection heuristics for invisible fields.
+        const fieldDetail = this.getFieldDetailByElement(element);
+        if (!fieldDetail.fieldName) {
+          continue;
+        }
+
         // Setting up an observer that notifies when the visible element becomes invisible
         setUpIntersectionObserver(element, VISIBILITY_STATE.INVISIBLE);
       } else {
@@ -676,22 +760,29 @@ export class FormAutofillHandler {
    * If any of the added/removed nodes (including the nodes in the node's subtree)
    * are of an address of cc type, a "form-changed" event is dispatched.
    */
-  setUpNodesObserver() {
+  setUpFormNodesMutationObserver() {
+    if (this.#isObservingFormMutations) {
+      return;
+    }
+
     const mutationObserver = new this.window.MutationObserver(
       (mutations, _) => {
         const collectMutatedNodes = mutations => {
-          let removedNodes = [];
-          let addedNodes = [];
+          let removedNodes = new Set();
+          let addedNodes = new Set();
+          let changedSelectElements = new Set();
           mutations.forEach(mutation => {
             if (mutation.type == "childList") {
-              if (mutation.addedNodes.length) {
-                addedNodes.push(...mutation.addedNodes);
+              if (HTMLSelectElement.isInstance(mutation.target)) {
+                changedSelectElements.add(mutation.target);
+              } else if (mutation.addedNodes.length) {
+                addedNodes.add(...mutation.addedNodes);
               } else if (mutation.removedNodes.length) {
-                removedNodes.push(...mutation.removedNodes);
+                removedNodes.add(...mutation.removedNodes);
               }
             }
           });
-          return [addedNodes, removedNodes];
+          return [addedNodes, removedNodes, changedSelectElements];
         };
 
         const collectAllSubtreeElements = node => {
@@ -711,22 +802,35 @@ export class FormAutofillHandler {
             );
         };
 
-        let [addedNodes, removedNodes] = collectMutatedNodes(mutations);
-        let relevantAddedElements = getCCAndAddressElements(addedNodes);
-        // We only care about removed elements that might change the
-        // currently detected fieldDetails
-        let relevantRemovedElements = getCCAndAddressElements(
-          removedNodes
-        ).filter(
+        const [addedNodes, removedNodes, changedSelectElements] =
+          collectMutatedNodes(mutations);
+        let relevantAddedElements = getCCAndAddressElements([...addedNodes]);
+        // We only care about removed elements and changed select options
+        // from the current set of detected fieldDetails
+        let relevantRemovedElements = getCCAndAddressElements([
+          ...removedNodes,
+        ]).filter(
+          element =>
+            this.#fieldDetails && !!this.getFieldDetailByElement(element)
+        );
+        let relevantChangedSelectElements = [...changedSelectElements].filter(
           element =>
             this.#fieldDetails && !!this.getFieldDetailByElement(element)
         );
 
-        if (!relevantRemovedElements.length && !relevantAddedElements.length) {
+        if (
+          !relevantRemovedElements.length &&
+          !relevantAddedElements.length &&
+          !relevantChangedSelectElements.length
+        ) {
           return;
         }
 
         let changes = {};
+        if (relevantChangedSelectElements.length) {
+          changes[FORM_CHANGE_REASON.SELECT_OPTIONS_CHANGED] =
+            relevantChangedSelectElements;
+        }
         if (relevantRemovedElements.length) {
           changes[FORM_CHANGE_REASON.NODES_REMOVED] = relevantRemovedElements;
         }
@@ -745,7 +849,27 @@ export class FormAutofillHandler {
       }
     );
     const config = { childList: true, subtree: true };
-    mutationObserver.observe(this.form.rootElement, config);
+    this.#formMutationObserver = mutationObserver;
+    this.#formMutationObserver.observe(this.form.rootElement, config);
+    this.#isObservingFormMutations = true;
+  }
+
+  /**
+   * After the form was submitted, disconnect all IntersectionObserver that
+   * are still observing form's elements and disconnect the MutationsOberver
+   * that is observing the form.
+   */
+  clearFormChangeObservers() {
+    if (!this.#isObservingFormMutations) {
+      return;
+    }
+    // Disconnect intersection observers
+    for (let element of this.form.elements) {
+      this.clearVisibilityStateObserverByElement(element);
+    }
+    // Disconnect mutation observer
+    this.#formMutationObserver.disconnect();
+    this.#isObservingFormMutations = false;
   }
 
   computeFillingValue(fieldDetail) {
@@ -851,7 +975,8 @@ export class FormAutofillHandler {
     const value = profile[fieldName];
 
     let option = cache[value]?.deref();
-    if (!option) {
+
+    if (!option || !option.isConnected) {
       option = FormAutofillUtils.findSelectOption(element, profile, fieldName);
 
       if (option) {
@@ -1102,7 +1227,7 @@ export class FormAutofillHandler {
       let streetAddressDetail = this.getFieldDetailByName("street-address");
       if (
         streetAddressDetail &&
-        HTMLInputElement.isInstance(streetAddressDetail.element)
+        FormAutofillUtils.isTextControl(streetAddressDetail.element)
       ) {
         profile["street-address"] = profile["-moz-street-address-one-line"];
       }
@@ -1213,14 +1338,22 @@ export class FormAutofillHandler {
   /**
    * Fills the provided element with the specified value.
    *
-   * @param {HTMLInputElement| HTMLSelectElement} element - The form field element to be filled.
+   * @param {HTMLElement} element - The form field element to be filled.
    * @param {string} value - The value to be filled into the form field.
+   * @param {object} options
+   * @param {boolean} [options.ignoreFocus] - Whether to ignore focusing the field that is filled.
+   *                                          True  - When an autofilled field get's refilled after
+   *                                                  its value was cleared
+   *                                          False - Default
    */
-  static fillFieldValue(element, value) {
-    if (FormAutofillUtils.focusOnAutofill) {
+  static fillFieldValue(element, value, { ignoreFocus = false } = {}) {
+    // Ignoring to focus the field if it gets refilled (after the site cleared its value),
+    // because it was already focused on the previous autofill action and we want to avoid
+    // re-triggering any event listener callbacks or autocomplete dropdowns
+    if (FormAutofillUtils.focusOnAutofill && !ignoreFocus) {
       element.focus({ preventScroll: true });
     }
-    if (HTMLInputElement.isInstance(element)) {
+    if (FormAutofillUtils.isTextControl(element)) {
       element.setUserInput(value);
     } else if (HTMLSelectElement.isInstance(element)) {
       // Set the value of the select element so that web event handlers can react accordingly
@@ -1252,6 +1385,7 @@ export class FormAutofillHandler {
   }
 
   clearFilledFields(focusedId, elementIds) {
+    this.cancelRefillOnSiteClearingFieldsAction();
     this.#isAutofillInProgress = true;
     const fieldDetails = elementIds.map(id =>
       this.getFieldDetailByElementId(id)
@@ -1315,7 +1449,7 @@ export class FormAutofillHandler {
   }
 
   isFieldAutofillable(fieldDetail, profile) {
-    if (HTMLInputElement.isInstance(fieldDetail.element)) {
+    if (FormAutofillUtils.isTextControl(fieldDetail.element)) {
       return !!profile[fieldDetail.fieldName];
     }
     return !!this.matchSelectOptions(fieldDetail, profile);
